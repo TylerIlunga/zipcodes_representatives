@@ -19,7 +19,7 @@ def persist_info_to_csv():
         csv_out.writerow(("Zipcode", "City", "Representative"))
         for state in state_names:
             for state_zipcode_data in state_zipcode_data_map[state]:
-                row_tuple = (state_zipcode_data[0], state_zipcode_data[1], state_zipcode_data[2])
+                row_tuple = (state_zipcode_data[0], state_zipcode_data[1], state_zipcode_data[2].strip())
                 csv_out.writerow(row_tuple)
 
 
@@ -43,32 +43,35 @@ for state in state_names:
             # Remove when not debugging
             # break
         buffer_pair_data.append(anchor_tag.text)
-    # Remove when not debugging
-    # break
+    print("state_zipcode_data_map[state]:", state_zipcode_data_map[state])
+    if len(state_zipcode_data_map[state]) != 0:
+        for zip_code_city_pair in state_zipcode_data_map[state]:
+            print("zip_code_city_pair:", zip_code_city_pair)
+            zip_code = zip_code_city_pair[0]
+            print("zip_code:", zip_code)
+            browser.get(rep_url)
+            sleep(2)
+            find_rep_input_field = browser.find_elements_by_css_selector('#Find_Rep_by_Zipcode')
+            find_rep_input_field[0].send_keys(zip_code)
+            find_rep_button = browser.find_elements_by_css_selector('.btn-success')
+            find_rep_button[0].click()
+            sleep(2)
+            # Rep Page
+            rep_page_anchor_tags = browser.find_elements_by_css_selector('.rep > a')
+            reps = ""
+            for anchor_tag in rep_page_anchor_tags:
+                print("Representative:", anchor_tag.text)
+                if anchor_tag.text == '':
+                    continue
+                reps += anchor_tag.text + ", "
+                # Remove when not debugging
+                # break
+            zip_code_city_pair.append(reps)
+            print("zip_code_city_pair:", zip_code_city_pair)
+            # Remove when not debugging
+            # break
 
-print("ZipCode scraping DONE")
-
-# Scrape web for U.S. Representatives per Zipcode
-for state in state_names:
-    zip_code = state_zipcode_data_map[state][0][0]
-    print("zip_code:", zip_code)
-    browser.get(rep_url)
-    sleep(2)
-    find_rep_input_field = browser.find_elements_by_css_selector('#Find_Rep_by_Zipcode')
-    find_rep_input_field[0].send_keys(zip_code)
-    find_rep_button = browser.find_elements_by_css_selector('.btn-success')
-    find_rep_button[0].click()
-    sleep(2)
-    # Rep Page
-    rep_page_anchor_tags = browser.find_elements_by_css_selector('.rep > a')
-    for anchor_tag in rep_page_anchor_tags:
-        print("Representative:", anchor_tag.text)
-        state_zipcode_data_map[state][0].append(anchor_tag.text)
-        print("state_zipcode_data_map[0]:", state_zipcode_data_map[state][0])
-        # Remove when not debugging
-        # break
-    # Remove when not debugging
-    # break
+print("DONE")
 
 browser.close()
 
