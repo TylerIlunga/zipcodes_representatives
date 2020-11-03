@@ -30,12 +30,15 @@ def persist_info_to_csv(shared_state_rep_map):
 
 
 # Scrape web for all U.S. zipcodes
-def gather_zip_codes():
-    state_zipcode_data_map = {}
+def gather_zip_codes(start_end_tuple):
+    start = start_end_tuple[0]
+    end = start_end_tuple[1]
+    shared_state_zipcode_data_map = start_end_tuple[2]
+    sns = state_names[start:end]
+    print(f"***gather_zip_codes*** Process {os.getpid()}")
     browser = Chrome(executable_path=chrome_driver_path)
-    for state in state_names:
+    for state in sns:
         url = zipcode_url + f"/{state}/"
-        state_zipcode_data_map[state] = []
         browser.get(url)
         sleep(2)
         zipcode_anchor_tags = browser.find_elements_by_css_selector('.inner_table > tbody > tr > td > a')
@@ -46,31 +49,31 @@ def gather_zip_codes():
                 continue
             if len(buffer_pair_data) == 2:
                 print("RESET:", buffer_pair_data)
-                state_zipcode_data_map[state].append(list(buffer_pair_data))
+                shared_state_zipcode_data_map[state].append(list(buffer_pair_data))
                 buffer_pair_data = []
                 # Remove when not debugging
                 # break
             buffer_pair_data.append(anchor_tag.text)
         if len(buffer_pair_data) == 2:
              print("SPECIAL CASE RESET:", buffer_pair_data)
-             state_zipcode_data_map[state].append(list(buffer_pair_data))
+             shared_state_zipcode_data_map[state].append(list(buffer_pair_data))
         # Remove when not debugging
         # break
     print("DONE")
     browser.close()
-    return state_zipcode_data_map
 
 # Map ZipCode to U.S. Representatives
 def map_zc_to_rep(start_end_tuple):
     start = start_end_tuple[0]
     end = start_end_tuple[1]
     shared_state_zipcode_data_map = start_end_tuple[2]
-    print("process data separation (start, end):", start, end)
+    print(f"***map_zc_to_rep*** Process {os.getpid()}:", start, end)
     sns = state_names[start:end]
+    print("sns:", sns)
     browser = Chrome(executable_path=chrome_driver_path)
     for state in sns:
         print(f"Process {os.getpid()} state, shared_state_zipcode_data_map[state]: {state}, {shared_state_zipcode_data_map[state]}")
-        if len(state_zipcode_data_map[state]) != 0:
+        if len(shared_state_zipcode_data_map[state]) != 0:
             for zip_code_city_pair in shared_state_zipcode_data_map[state]:
                 print(f"Process {os.getpid()} zip_code_city_pair: {zip_code_city_pair}")
                 zip_code = zip_code_city_pair[0]
@@ -103,15 +106,30 @@ def map_zc_to_rep(start_end_tuple):
 with multiprocessing.Manager() as manager:
     processes = []
     offset = 0
-    state_zipcode_data_map = gather_zip_codes()
     shared_state_rep_map = manager.dict()
-    for key in state_zipcode_data_map.keys():
-        print("key, state_zipcode_data_map[key]:", key, state_zipcode_data_map[key])
-        shared_state_rep_map[key] = state_zipcode_data_map[key]
 
     for cpu in range(NUM_CPUS):
         states_to_process = int(total_states/8) + offset
-        print("states_to_process, offset:", states_to_process, offset)
+        print("gather_zip_codes ==> offset, states_to_process:", offset, states_to_process)
+        for state in state_names[offset:states_to_process]:
+            shared_state_rep_map[state] = manager.list()
+        processes.append(
+            multiprocessing.Process(target=gather_zip_codes, args=((offset, states_to_process, shared_state_rep_map),))
+        )
+        offset = states_to_process
+
+    for process in processes:
+        process.start()
+
+    for process in processes:
+        process.join()
+    
+    processes.clear()
+    offset = 0
+
+    for cpu in range(NUM_CPUS):
+        states_to_process = int(total_states/8) + offset
+        print("map_zc_to_rep ==> offset, states_to_process:", offset, states_to_process)
         processes.append(
             multiprocessing.Process(target=map_zc_to_rep, args=((offset, states_to_process, shared_state_rep_map),))
         )
