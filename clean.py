@@ -10,7 +10,7 @@ def remove_rows_with_no_rep():
         reader = csv.reader(input, skipinitialspace=True)
         writer = csv.writer(output, delimiter=",")
         for row in reader:
-            if row[2] == "" or row[2] == None:
+            if row[3] == "" or row[3] == None:
                 continue
             writer.writerow(row)
 

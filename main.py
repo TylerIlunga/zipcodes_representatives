@@ -27,14 +27,14 @@ def persist_info_to_csv(shared_state_rep_map):
     """Persist the gathered information to a CSV file"""
     with open(OUTPUT_CSV_DATA_PATH, 'w', newline='') as out:
         csv_out = csv.writer(out)
-        csv_out.writerow(("ZipCode", "City", "Representative"))
+        csv_out.writerow(("Zip Code", "City", "State", "Representative"))
         for state in STATE_NAMES:
             for index, state_zipcode_data in enumerate(shared_state_rep_map[state]):
-                if len(state_zipcode_data) == 3:
+                if len(state_zipcode_data) == 4:
                     print('(persist_info_to_csv) state_zipcode_data:',
                           state_zipcode_data)
                     row_tuple = (
-                        state_zipcode_data[0], state_zipcode_data[1], state_zipcode_data[2].strip())
+                        state_zipcode_data[0], state_zipcode_data[1], state_zipcode_data[2], state_zipcode_data[3].strip())
                     csv_out.writerow(row_tuple)
 
 
@@ -50,7 +50,7 @@ def gather_zip_codes(start_end_tuple):
         print(f"Process {os.getpid()}: State: {state}")
         url = ZIPCODE_URL + f"/{state}/"
         browser.get(url)
-        sleep(4)
+        sleep(2.5)
         zipcode_anchor_tags = browser.find_elements_by_css_selector(
             '.inner_table > tbody > tr > td > a')
         buffer_pair_data = []
@@ -59,6 +59,7 @@ def gather_zip_codes(start_end_tuple):
                 continue
             # print("anchor_tag.text:", anchor_tag.text)
             if len(buffer_pair_data) == 2:
+                buffer_pair_data.append(state)
                 shared_state_zipcode_data_map[state].append(
                     list(buffer_pair_data))
                 buffer_pair_data = []
@@ -66,6 +67,7 @@ def gather_zip_codes(start_end_tuple):
                 # break
             buffer_pair_data.append(anchor_tag.text)
         if len(buffer_pair_data) == 2:
+            buffer_pair_data.append(state)
             shared_state_zipcode_data_map[state].append(list(buffer_pair_data))
         # Remove when not debugging
         # break
@@ -90,14 +92,14 @@ def map_zc_to_rep(start_end_tuple):
             for index, zip_code_city_pair in enumerate(shared_state_zipcode_data_map[state]):
                 zip_code = zip_code_city_pair[0]
                 browser.get(REP_URL)
-                sleep(4)
+                sleep(2.5)
                 find_rep_input_field = browser.find_elements_by_css_selector(
                     '#Find_Rep_by_Zipcode')
                 find_rep_input_field[0].send_keys(zip_code)
                 find_rep_button = browser.find_elements_by_css_selector(
                     '.btn-success')
                 find_rep_button[0].click()
-                sleep(4)
+                sleep(2.5)
                 rep_page_anchor_tags = browser.find_elements_by_css_selector(
                     '.rep > a')
                 reps = ""
