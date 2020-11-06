@@ -20,7 +20,6 @@ STATE_NAMES = [
     "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Virginia",
     "Virgin Islands", "Vermont", "Washington", "Wisconsin", "West Virginia", "Wyoming"
 ]
-
 # Lambert Conformal map of lower 48 states.
 states_bm_0 = Basemap(llcrnrlon=-119, llcrnrlat=20.2, urcrnrlon=-64, urcrnrlat=48.8,
                       projection='lcc', lat_1=33, lat_2=45, lon_0=-95)
@@ -65,40 +64,30 @@ def get_max(map_data_type):
     return max_count
 
 
-def get_colors_based_on_density(vmin, vmax):
+def get_colors_based_on_density(vmin, vmax, map_data_type):
     val_range = vmax - vmin
     for shape_dict in states_bm_0.states_info:
         state = shape_dict["NAME"]
-        tzcps = len(map_data_dict["tzcps"][state])
-        trps = len(map_data_dict["trps"][state])
+        state_total = len(map_data_dict[map_data_type][state])
         # Calling colormap with a value between 0 and 1 returns argba value.
         # Invert color range (hot colors are high population), and take sqrt root
         # to spread out colors even more.
-        colors_for_map["tzcps"][state] = colormap(
-            np.sqrt((tzcps-vmin)/(val_range)))[:3]
-        colors_for_map["trps"][state] = colormap(
-            np.sqrt((trps-vmin)/(val_range)))[:3]
+        colors_for_map[map_data_type][state] = colormap(
+            np.sqrt((state_total-vmin)/(val_range)))[:3]
         state_names.append(state)
 
 
-def plot_state_boundaries_to_maps():
+def plot_state_boundaries_to_maps(map_data_type):
     # Color, create, and add polygons to maps
     for index, segment in enumerate(states_bm_0.states):
         state = state_names[index]
-        tzcps_color = rgb2hex(colors_for_map["tzcps"][state])
-        tzcps_map_polygon = Polygon(
-            segment, facecolor=tzcps_color, edgecolor='lightgrey')
-        ax0.add_patch(tzcps_map_polygon)
-    # for index, segment in enumerate(states_bm_1):
-    #     state = STATE_NAMES[index]
-    #     trps_color = rgb2hex(colors_for_map["trps"][state])
-    #     print(f"trps_color for State {state}: {trps_color}")
-    #     trps_map_polygon = Polygon(
-    #         segment, color=trps_color, edgecolor=trps_color)
-    #     ax1.add_patch(trps_map_polygon)
+        state_color = rgb2hex(colors_for_map[map_data_type][state])
+        polygon = Polygon(
+            segment, facecolor=state_color, edgecolor='lightgrey')
+        ax0.add_patch(polygon)
 
 
-def plot_boundaries_for_ak_and_hi():
+def plot_boundaries_for_ak_and_hi(map_data_type):
     AREA_1 = 0.005  # exclude small Hawaiian islands that are smaller than AREA_1
     AREA_2 = AREA_1 * 30.0  # exclude Alaskan islands that are smaller than AREA_2
     AK_SCALE = 0.19  # scale down Alaska to show as a map inset
@@ -116,14 +105,14 @@ def plot_boundaries_for_ak_and_hi():
             if shapedict['NAME'] == 'Hawaii' and float(shapedict['AREA']) > AREA_1:
                 segment = [(x + HI_OFFSET_X, y + HI_OFFSET_Y)
                            for x, y in segment]
-                tzcps_color = rgb2hex(colors_for_map["tzcps"][state])
+                state_color = rgb2hex(colors_for_map[map_data_type][state])
             elif shapedict['NAME'] == 'Alaska' and float(shapedict['AREA']) > AREA_2:
                 segment = [(x*AK_SCALE + AK_OFFSET_X, y*AK_SCALE + AK_OFFSET_Y)
                            for x, y in segment]
-                tzcps_color = rgb2hex(colors_for_map["tzcps"][state])
-            tzcps_map_polygon = Polygon(
-                segment, facecolor=tzcps_color, edgecolor='gray', linewidth=.45)
-            ax0.add_patch(tzcps_map_polygon)
+                state_color = rgb2hex(colors_for_map[map_data_type][state])
+            polygon = Polygon(
+                segment, facecolor=state_color, edgecolor='gray', linewidth=.45)
+            ax0.add_patch(polygon)
 
 
 def plot_bounding_boxes_for_ak_and_hi():
@@ -144,19 +133,19 @@ def plot_color_bar(norm):
                       label=r'[density per $\mathregular{km^2}$]')
 
 
-def plot_zipcode_density():
+def plot_density_map(map_data_type, map_title):
     populate_map_data_dict()
     vmin = 0
-    vmax = get_max("tzcps")
-    get_colors_based_on_density(vmin, vmax)
-    plot_state_boundaries_to_maps()
-    plot_boundaries_for_ak_and_hi()
-    ax0.set_title(ZIPCODES_PER_STATE_MAP_TITLE)
-    # ax1.set_title(REPS_PER_STATE_MAP_TITLE)
+    vmax = get_max(map_data_type)
+    get_colors_based_on_density(vmin, vmax, map_data_type)
+    plot_state_boundaries_to_maps(map_data_type)
+    plot_boundaries_for_ak_and_hi(map_data_type)
+    ax0.set_title(map_title)
     plot_bounding_boxes_for_ak_and_hi()
     plot_color_bar(Normalize(vmin=vmin, vmax=vmax))
     plt.show()
 
 
 if __name__ == "__main__":
-    plot_zipcode_density()
+    plot_density_map("tzcps", ZIPCODES_PER_STATE_MAP_TITLE)
+    # plot_density_map("trps", REPS_PER_STATE_MAP_TITLE)
