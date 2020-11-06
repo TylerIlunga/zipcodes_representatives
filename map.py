@@ -1,3 +1,4 @@
+# With guidance from https://github.com/matplotlib/basemap/blob/master/examples/fillstates.py
 import os
 import csv
 import numpy as np
